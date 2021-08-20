@@ -19,7 +19,7 @@ Resultados:
 - Average reward (all episodes): -47.335 
 - Average reward (last 10 episodes): -7.0
 
-[!]
+![](https://github.com/lucamaral/qlearning/blob/main/Figure_1.png)
 
 #### Instalar o GYM
 ```
