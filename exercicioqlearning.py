@@ -8,6 +8,7 @@ from copy import deepcopy
 import matplotlib.pyplot as plt
 import gym
 from gym import spaces
+import time
 
 RIGHT_ACTION = 0
 DOWN_ACTION = 1
@@ -25,8 +26,10 @@ class Environment(gym.Env):
   
   metadata = {'render.modes': ['console']}
 
-  def __init__(self):
+  def __init__(self, is_printing=True):
     super(Environment, self).__init__()
+    self.is_printing = is_printing
+
 
     # Tamanho do mundo grid
     self.rows = 6
@@ -118,6 +121,9 @@ class Environment(gym.Env):
             next_agent_pos[0] = new_agent_row
             next_agent_pos[1] = new_agent_col
 
+    if agent_moved is False:
+        reward = -5
+
     self.cur_agent_pos = tuple(next_agent_pos)
     self.cur_obj_pos = tuple(next_obj_pos)
 
@@ -131,14 +137,17 @@ class Environment(gym.Env):
     # Verifica se o agente chegou na base com/sem o objeto
     if self.grid[agent_row, agent_col] == BASE:
         # Reward de -100 por ter chegado na base sem o objeto
-        reward = reward if self.obj_captured else -100
-        done = True
+        reward = 1 if self.obj_captured else -100
+        done = self.obj_captured
+        if self.obj_captured is False:
+            self.cur_agent_pos = self.start_agent_pos
 
     obj_row = self.cur_obj_pos[0]
     obj_col = self.cur_obj_pos[1]
 
     # Verifica se o objeto chegou na base
     if self.grid[obj_row, obj_col] == BASE:
+        reward = 1 if self.obj_captured else reward
         done = True
 
     return self.observation(self.cur_agent_pos), reward, done, {}
@@ -194,7 +203,8 @@ class Environment(gym.Env):
 
   def render(self):
     self.create_grid()
-    print(tabulate(self.grid, tablefmt="fancy_grid"))
+    if self.is_printing:
+        print(tabulate(self.grid, tablefmt="fancy_grid"))
 
 def Qlearning(environment, num_episodes=100, alpha=0.3, gamma=0.9, epsilon=1.0, decay_epsilon=0.1, max_epsilon=1.0, min_epsilon=0.01):
   
@@ -207,8 +217,6 @@ def Qlearning(environment, num_episodes=100, alpha=0.3, gamma=0.9, epsilon=1.0, 
 
   # episodes
   for episode in range(num_episodes):
-
-      print(f"Episode {episode}")
       
       # reset the environment to start a new episode
       state = environment.reset()
@@ -227,7 +235,8 @@ def Qlearning(environment, num_episodes=100, alpha=0.3, gamma=0.9, epsilon=1.0, 
           else:
               action = environment.action_space.sample()
 
-          print(f"Episode {episode} | Step {step} | Action {action_dict[action]}")
+          if environment.is_printing and episode % 10 == 0:
+            print(f"Episode {episode} | Step {step} | Action {action_dict[action]}")
 
           # perform the action and observe the new state and corresponding reward
           new_state, reward, done, info = environment.step(action)
@@ -261,23 +270,27 @@ def Qlearning(environment, num_episodes=100, alpha=0.3, gamma=0.9, epsilon=1.0, 
   # return the list of accumulated reward along episodes
   return rewards
 
-num_episodes=100
+num_episodes=200
 alpha=0.3
 gamma=0.9
 epsilon=1
-decay_epsilon=0.1
+decay_epsilon=0.3
 max_epsilon=1
 min_epsilon=0.001
 
 # run Q-learning
-env = Environment()
+is_printing=False
+env = Environment(is_printing)
 print("Estado inicial")
 env.render()
+start = time.time()
 rewards = Qlearning(env, num_episodes, alpha, gamma, epsilon, decay_epsilon, max_epsilon, min_epsilon)
+end = time.time()
+print(f"Execution time {end - start}")
 
 # print results
 print ("Average reward (all episodes): " + str(sum(rewards)/num_episodes))
-print ("Average reward (last 5 episodes): " + str(sum(rewards[-5:])/5))
+print ("Average reward (last 10 episodes): " + str(sum(rewards[-10:])/10))
 
 plt.plot(range(num_episodes), rewards)
 plt.xlabel('Episodes')
